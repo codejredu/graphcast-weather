@@ -1,0 +1,8 @@
+{
+  "name": "GraphCast Weather Engine",
+  "description": "AI-powered global weather forecasting engine inspired by Google DeepMind GraphCast, predicting atmospheric dynamics in 60 seconds with ERA5 training and icosahedral GNN mesh visualization.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
