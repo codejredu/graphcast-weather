@@ -2,7 +2,7 @@
 
 on:
   push:
-    branches: ["main"] # או master, תלוי באיזה ענף אתה משתמש
+    branches: ["main"] # החלף ל-master אם זה שם הענף שלך
 
 permissions:
   contents: read
@@ -37,7 +37,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: './dist' # תיקיית היציאה הנפוצה ב-Vite
+          path: './dist'
 
   deploy:
     environment:
