@@ -146,10 +146,14 @@ export const WeatherCardDay: React.FC<WeatherCardDayProps> = ({
         <div className="flex flex-col items-start pt-0.5">
           {renderWeatherIcon()}
 
-          {/* Rain / Snow chance indicator */}
-          <div className="text-[10px] font-mono font-medium text-cyan-200 bg-slate-900/80 px-2 py-0.5 rounded-full border border-cyan-500/30 flex items-center gap-1 mt-1 shadow-sm">
+          {/* Rain / Snow chance indicator + Precipitation mm */}
+          <div className="text-[10px] font-mono font-medium text-cyan-200 bg-slate-900/85 px-2 py-0.5 rounded-full border border-cyan-500/40 flex items-center gap-1 mt-1 shadow-sm">
             <span>{forecast.precipitationType === 'snow' ? '❄️' : '🌧️'}</span>
-            <span>סיכוי {forecast.precipitationType === 'snow' ? 'לשלג' : 'לגשם'}: {forecast.precipitationProbability}%</span>
+            <span>סיכוי: {forecast.precipitationProbability}%</span>
+            <span className="text-slate-500">•</span>
+            <span className="text-amber-300 font-bold tracking-tight">
+              צפי: {forecast.precipitationSum !== undefined ? `${forecast.precipitationSum} מ"מ` : '0 מ"מ'}
+            </span>
           </div>
         </div>
 
@@ -316,28 +320,31 @@ export const WeatherCardDay: React.FC<WeatherCardDayProps> = ({
       </div>
 
       {/* ========================================================= */}
-      {/* 4. FOURTH ROW: 3 Capsules (Humidity, Rain/Snow Chance, Barometer) */}
+      {/* 4. FOURTH ROW: 3 Capsules (Humidity, Rain/Snow Chance & Predicted mm, Barometer) */}
       {/* ========================================================= */}
       <div className="relative z-10 w-full mb-2.5 grid grid-cols-3 gap-1.5">
         {/* 1. Humidity (Droplet + 28%) */}
         <div
-          className="px-1.5 py-1.5 rounded-xl flex items-center justify-center gap-1"
+          className="px-1.5 py-1 rounded-xl flex flex-col items-center justify-center gap-0.5"
           style={{
             background: 'linear-gradient(135deg, rgba(14, 165, 233, 0.22), rgba(15, 23, 42, 0.8))',
             border: '1.5px solid rgba(56, 189, 248, 0.35)',
             boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.1)',
           }}
-          title="לחות יחסית"
+          title={`לחות יחסית: ${forecast.humidity}%`}
         >
-          <span className="text-[11px] filter drop-shadow-[0_0_3px_#38bdf8]">💧</span>
-          <span className="text-xs sm:text-sm font-bold font-mono text-cyan-200 tracking-tight">
-            {forecast.humidity}%
-          </span>
+          <div className="flex items-center gap-1">
+            <span className="text-[10px] filter drop-shadow-[0_0_3px_#38bdf8]">💧</span>
+            <span className="text-xs font-bold font-mono text-cyan-200 tracking-tight">
+              {forecast.humidity}%
+            </span>
+          </div>
+          <span className="text-[9px] text-slate-400 font-sans">לחות</span>
         </div>
 
-        {/* 2. Rain / Snow Chance Capsule */}
+        {/* 2. Rain / Snow Chance & Predicted mm Capsule */}
         <div
-          className="px-1.5 py-1.5 rounded-xl flex items-center justify-center gap-1"
+          className="px-1.5 py-1 rounded-xl flex flex-col items-center justify-center gap-0.5"
           style={{
             background: forecast.precipitationType === 'snow'
               ? 'linear-gradient(135deg, rgba(168, 85, 247, 0.25), rgba(15, 23, 42, 0.8))'
@@ -347,32 +354,40 @@ export const WeatherCardDay: React.FC<WeatherCardDayProps> = ({
               : '1.5px solid rgba(34, 211, 238, 0.45)',
             boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.1)',
           }}
-          title={forecast.precipitationType === 'snow' ? 'סיכוי לשלג' : 'סיכוי למשקעים / גשם'}
+          title={`סיכוי: ${forecast.precipitationProbability}% | צפי כמות משקעים: ${forecast.precipitationSum ?? 0} מ"מ`}
         >
-          <span className="text-[11px] filter drop-shadow-[0_0_3px_#38bdf8]">
-            {forecast.precipitationType === 'snow' ? '❄️' : '🌧️'}
-          </span>
-          <span className="text-xs sm:text-sm font-bold font-mono text-sky-200 tracking-tight">
-            {forecast.precipitationProbability}%
+          <div className="flex items-center gap-1">
+            <span className="text-[10px] filter drop-shadow-[0_0_3px_#38bdf8]">
+              {forecast.precipitationType === 'snow' ? '❄️' : '🌧️'}
+            </span>
+            <span className="text-xs font-bold font-mono text-sky-200 tracking-tight">
+              {forecast.precipitationProbability}%
+            </span>
+          </div>
+          <span className="text-[9px] font-mono font-bold text-amber-300 tracking-tight">
+            צפי {forecast.precipitationSum ?? 0} מ"מ
           </span>
         </div>
 
         {/* 3. Barometric Pressure (Vintage Barometer + 1018) */}
         <div
-          className="px-1.5 py-1.5 rounded-xl flex items-center justify-center gap-1"
+          className="px-1.5 py-1 rounded-xl flex flex-col items-center justify-center gap-0.5"
           style={{
             background: 'linear-gradient(135deg, rgba(20, 184, 166, 0.22), rgba(15, 23, 42, 0.8))',
             border: '1.5px solid rgba(45, 212, 191, 0.35)',
             boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.1)',
           }}
-          title="לחץ ברומטרי (hPa)"
+          title={`לחץ ברומטרי: ${forecast.pressure} hPa`}
         >
-          <div className="w-3.5 h-3.5 rounded-full bg-amber-50 border border-amber-700/60 flex items-center justify-center relative overflow-hidden shrink-0">
-            <div className="w-2 h-0.5 bg-rose-700 origin-left transform rotate-45 shadow-sm" />
+          <div className="flex items-center gap-1">
+            <div className="w-3.5 h-3.5 rounded-full bg-amber-50 border border-amber-700/60 flex items-center justify-center relative overflow-hidden shrink-0">
+              <div className="w-2 h-0.5 bg-rose-700 origin-left transform rotate-45 shadow-sm" />
+            </div>
+            <span className="text-xs font-bold font-mono text-teal-200 tracking-tight">
+              {forecast.pressure}
+            </span>
           </div>
-          <span className="text-xs sm:text-sm font-bold font-mono text-teal-200 tracking-tight">
-            {forecast.pressure}
-          </span>
+          <span className="text-[9px] text-slate-400 font-sans">hPa</span>
         </div>
       </div>
 
