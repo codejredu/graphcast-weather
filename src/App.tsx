@@ -1,4 +1,4 @@
-/**
+ /**
  * GraphCast Weather Engine - Automatic 10-Day Forecast
  * Featuring the user's exact glassmorphism card design for each day.
  */
@@ -11,7 +11,7 @@ import { Search, MapPin, Loader2, X, Compass, Clock, Cpu, Sparkles, LayoutGrid, 
 import oceanBg from './assets/images/ocean_wave_sunset_1792248052222.jpg';
 
 export default function App() {
-  const [selectedLocation, setSelectedLocation] = useState<LocationItem>(PRESET_CITIES[0]); // Default: Tel Aviv
+  const [selectedLocation, setSelectedLocation] = useState<LocationItem>(PRESET_CITIES[0]); // Default: Jerusalem
   const [weatherData, setWeatherData] = useState<WeatherPayload | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
