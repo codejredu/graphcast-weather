@@ -562,6 +562,7 @@ export function generateRealisticGraphCastForecast(location: LocationItem): Weat
     const isSnow = decoded.category === 'snow' || minTemp <= 1;
     const precipProb = code === 61 ? 75 : (i === 3 || i === 7) ? 35 : 10;
     const precipType: 'rain' | 'snow' | 'none' = isSnow ? 'snow' : precipProb >= 20 ? 'rain' : 'none';
+    const precipSum = code === 61 ? +(4.2 + (i % 3) * 1.5).toFixed(1) : (i === 3 || i === 7) ? 1.8 : 0;
 
     daily.push({
       date: dateStr,
@@ -581,7 +582,7 @@ export function generateRealisticGraphCastForecast(location: LocationItem): Weat
       humidity,
       pressure,
       waveHeight,
-      precipitationSum: code === 61 ? 3.5 : 0,
+      precipitationSum: precipSum,
       precipitationProbability: precipProb,
       precipitationType: precipType,
       surfCondition: !isCoastal ? 'מזג אוויר יבשתי' : waveHeight > 1.2 ? 'תנאי גלישה' : 'ים שקט',
