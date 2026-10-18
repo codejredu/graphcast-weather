@@ -1,6 +1,19 @@
-import { CurrentWeather, DailyForecast, HourlyPoint, LocationItem, WaveData, WeatherCategory, WeatherPayload } from '../types';
+ import { CurrentWeather, DailyForecast, HourlyPoint, LocationItem, WaveData, WeatherCategory, WeatherPayload } from '../types';
 
 export const PRESET_CITIES: LocationItem[] = [
+  {
+    id: 281184,
+    name: 'ירושלים',
+    nameHe: 'ירושלים',
+    country: 'ישראל',
+    countryCode: 'IL',
+    admin1: 'מחוז ירושלים',
+    latitude: 31.7683,
+    longitude: 35.2137,
+    elevation: 754,
+    timezone: 'Asia/Jerusalem',
+    isCoastal: false,
+  },
   {
     id: 294071,
     name: 'נהריה',
@@ -52,19 +65,6 @@ export const PRESET_CITIES: LocationItem[] = [
     elevation: 10,
     timezone: 'Asia/Jerusalem',
     isCoastal: true,
-  },
-  {
-    id: 281184,
-    name: 'ירושלים',
-    nameHe: 'ירושלים',
-    country: 'ישראל',
-    countryCode: 'IL',
-    admin1: 'מחוז ירושלים',
-    latitude: 31.7683,
-    longitude: 35.2137,
-    elevation: 754,
-    timezone: 'Asia/Jerusalem',
-    isCoastal: false,
   },
   {
     id: 295277,
