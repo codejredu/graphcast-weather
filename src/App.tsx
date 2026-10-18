@@ -521,13 +521,31 @@ export default function App() {
         {/* ======================================================== */}
         {weatherData && viewMode === 'grid' && (
           <div className="space-y-4">
-            <div className="text-right">
-              <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">
-                תחזית מלאה ל-10 ימים הבאים
-              </h2>
-              <p className="text-xs text-slate-300 mt-0.5">
-                לחץ על כל יום להגדלה או בחינה מעמיקה
-              </p>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-right">
+              <div>
+                <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">
+                  תחזית מלאה ל-10 ימים הבאים
+                </h2>
+                <p className="text-xs text-slate-300 mt-0.5">
+                  לחץ על כל יום להגדלה או בחינה מעמיקה
+                </p>
+              </div>
+
+              {/* Total 10-Day Precipitation Telemetry Badge */}
+              <div className="flex items-center gap-2.5 self-start sm:self-auto bg-slate-900/90 px-3.5 py-2 rounded-2xl border border-cyan-500/40 shadow-lg shadow-cyan-950/40">
+                <div className="w-7 h-7 rounded-xl bg-cyan-500/20 border border-cyan-400/40 flex items-center justify-center text-cyan-300 text-sm">
+                  🌧️
+                </div>
+                <div className="text-right">
+                  <div className="text-[10px] text-slate-400 font-mono">צפי משקעים מצטבר (10 ימים)</div>
+                  <div className="text-sm font-mono font-bold text-amber-300 flex items-center gap-1">
+                    <span>
+                      {weatherData.daily.reduce((sum, d) => sum + (d.precipitationSum ?? 0), 0).toFixed(1)}
+                    </span>
+                    <span className="text-xs text-slate-300 font-sans font-normal">מ"מ</span>
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* Responsive Grid displaying the 10 Days in the exact card format */}
@@ -591,14 +609,75 @@ export default function App() {
               </button>
             </div>
 
-            {/* Centered Hero Card for Selected Day */}
-            <div className="flex flex-col items-center justify-center py-4">
+            {/* Centered Hero Card for Selected Day + Precipitation Details */}
+            <div className="flex flex-col items-center justify-center py-4 space-y-4 max-w-md mx-auto">
               <WeatherCardDay
                 forecast={weatherData.daily[selectedDayIndex]}
                 isSelected={true}
                 isScanning={isCalculating}
                 scanIndex={selectedDayIndex}
               />
+
+              {/* Detailed Precipitation Breakdown for Selected Day */}
+              {(() => {
+                const day = weatherData.daily[selectedDayIndex];
+                const mm = day.precipitationSum ?? 0;
+                const prob = day.precipitationProbability;
+                const intensityText =
+                  mm === 0
+                    ? 'ללא גשם (יבש)'
+                    : mm <= 2
+                    ? 'גשם קל / טפטוף מקומי'
+                    : mm <= 10
+                    ? 'גשם מתון'
+                    : mm <= 25
+                    ? 'גשם כבד / משקעים משמעותיים'
+                    : 'ממטרים עזים וסוערים';
+
+                return (
+                  <div className="w-full glass-panel-subtle rounded-2xl p-4 border border-cyan-500/30 text-right space-y-3">
+                    <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-base">{day.precipitationType === 'snow' ? '❄️' : '🌧️'}</span>
+                        <span className="font-bold text-xs text-white">
+                          פירוט צפי משקעים ל-{day.dayName} ({day.formattedDate})
+                        </span>
+                      </div>
+                      <span className="text-[10px] font-mono font-bold text-cyan-300 bg-cyan-950/80 px-2 py-0.5 rounded-full border border-cyan-500/40">
+                        צפי מ"מ GraphCast
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2 text-center">
+                      <div className="bg-slate-900/80 p-2 rounded-xl border border-slate-700/60">
+                        <div className="text-[10px] text-slate-400">צפי כמות</div>
+                        <div className="text-base font-bold font-mono text-amber-300 mt-0.5">
+                          {mm} <span className="text-xs text-slate-300 font-sans">מ"מ</span>
+                        </div>
+                      </div>
+
+                      <div className="bg-slate-900/80 p-2 rounded-xl border border-slate-700/60">
+                        <div className="text-[10px] text-slate-400">הסתברות</div>
+                        <div className="text-base font-bold font-mono text-sky-300 mt-0.5">
+                          {prob}%
+                        </div>
+                      </div>
+
+                      <div className="bg-slate-900/80 p-2 rounded-xl border border-slate-700/60">
+                        <div className="text-[10px] text-slate-400">סוג</div>
+                        <div className="text-xs font-bold text-slate-200 mt-1">
+                          {day.precipitationType === 'snow' ? 'שלג' : prob >= 15 ? 'גשם' : 'יבש'}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="text-xs text-slate-300 bg-slate-900/60 p-2.5 rounded-xl border border-white/5 flex items-center justify-between">
+                      <span className="text-slate-400">אופי המשקעים החזוי:</span>
+                      <span className="font-bold text-cyan-200">{intensityText}</span>
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           </div>
         )}
