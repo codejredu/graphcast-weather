@@ -7,6 +7,7 @@ import React, { useState, useEffect } from 'react';
 import { LocationItem, WeatherPayload } from './types';
 import { PRESET_CITIES, fetchWeatherData, getLocalTimeFormatted, generateRealisticGraphCastForecast, searchCities } from './services/weatherService';
 import { WeatherCardDay } from './components/WeatherCardDay';
+import { GoogleModelInfoModal } from './components/GoogleModelInfoModal';
 import { Search, MapPin, Loader2, X, Compass, Clock, Cpu, Sparkles, LayoutGrid, Calendar, ChevronRight, ChevronLeft, CheckCircle2, Zap } from 'lucide-react';
 import oceanBg from './assets/images/ocean_wave_sunset_1792248052222.jpg';
 
@@ -15,6 +16,9 @@ export default function App() {
   const [weatherData, setWeatherData] = useState<WeatherPayload | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Google GraphCast Model Info Modal State
+  const [isModelInfoOpen, setIsModelInfoOpen] = useState<boolean>(false);
 
   // Option 1: AI Neural Calculation Feedback State
   const [isCalculating, setIsCalculating] = useState<boolean>(true);
@@ -370,6 +374,17 @@ export default function App() {
               </div>
             </div>
           </div>
+
+          {/* Action Button: Google Model Info */}
+          <button
+            onClick={() => setIsModelInfoOpen(true)}
+            className="flex items-center gap-2 bg-gradient-to-r from-cyan-950/90 to-slate-900/90 hover:from-cyan-900/90 hover:to-slate-800 border border-cyan-500/40 hover:border-cyan-400 text-cyan-200 hover:text-white px-3.5 py-2 rounded-2xl text-xs font-bold transition-all shadow-md shadow-cyan-950/40 active:scale-95 cursor-pointer shrink-0"
+            title="מידע מקיף אודות מודל GraphCast AI של Google DeepMind"
+          >
+            <Sparkles className="w-4 h-4 text-amber-300 animate-pulse" />
+            <span className="hidden sm:inline">מידע אודות מודל גוגל</span>
+            <span className="sm:hidden">מודל גוגל</span>
+          </button>
         </div>
 
         {/* Quick Popular City Pills */}
@@ -481,8 +496,17 @@ export default function App() {
               </div>
             </div>
 
-            {/* Right/End: Recalculate Trigger Button */}
-            <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
+            {/* Right/End: Recalculate Trigger & Model Info Buttons */}
+            <div className="flex items-center gap-2 self-end sm:self-auto shrink-0 flex-wrap">
+              <button
+                onClick={() => setIsModelInfoOpen(true)}
+                className="px-3.5 py-1.5 rounded-xl bg-cyan-950/80 hover:bg-cyan-900/90 active:scale-95 text-cyan-200 hover:text-white border border-cyan-500/50 hover:border-cyan-400 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
+                title="מידע מקיף אודות מודל GraphCast AI של Google DeepMind"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                <span>מידע אודות מודל גוגל</span>
+              </button>
+
               <button
                 onClick={handleRecalculate}
                 disabled={isCalculating}
@@ -694,6 +718,12 @@ export default function App() {
           </div>
         </div>
       </footer>
+
+      {/* Google DeepMind GraphCast Model Info Modal */}
+      <GoogleModelInfoModal
+        isOpen={isModelInfoOpen}
+        onClose={() => setIsModelInfoOpen(false)}
+      />
     </div>
   );
 }
