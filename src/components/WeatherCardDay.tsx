@@ -1,8 +1,11 @@
-import React from 'react';
+ import React from 'react';
 import { DailyForecast } from '../types';
+import { BarometerGauge } from './BarometerGauge';
+import { getPressureForCountry } from '../utils/pressureUtils';
 
 interface WeatherCardDayProps {
   forecast: DailyForecast;
+  countryCode?: string;
   isSelected?: boolean;
   isScanning?: boolean;
   scanIndex?: number;
@@ -11,6 +14,7 @@ interface WeatherCardDayProps {
 
 export const WeatherCardDay: React.FC<WeatherCardDayProps> = ({
   forecast,
+  countryCode = 'IL',
   isSelected = false,
   isScanning = false,
   scanIndex = 0,
@@ -369,26 +373,32 @@ export const WeatherCardDay: React.FC<WeatherCardDayProps> = ({
           </span>
         </div>
 
-        {/* 3. Barometric Pressure (Vintage Barometer + 1018) */}
-        <div
-          className="px-1.5 py-1 rounded-xl flex flex-col items-center justify-center gap-0.5"
-          style={{
-            background: 'linear-gradient(135deg, rgba(20, 184, 166, 0.22), rgba(15, 23, 42, 0.8))',
-            border: '1.5px solid rgba(45, 212, 191, 0.35)',
-            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.1)',
-          }}
-          title={`לחץ ברומטרי: ${forecast.pressure} hPa`}
-        >
-          <div className="flex items-center gap-1">
-            <div className="w-3.5 h-3.5 rounded-full bg-amber-50 border border-amber-700/60 flex items-center justify-center relative overflow-hidden shrink-0">
-              <div className="w-2 h-0.5 bg-rose-700 origin-left transform rotate-45 shadow-sm" />
+        {/* 3. Barometric Pressure (Compass-like Barometer Gauge + Country Unit) */}
+        {(() => {
+          const pressureData = getPressureForCountry(forecast.pressure, countryCode);
+          return (
+            <div
+              className="px-1 py-1 rounded-xl flex flex-col items-center justify-center gap-0.5"
+              style={{
+                background: 'linear-gradient(135deg, rgba(20, 184, 166, 0.22), rgba(15, 23, 42, 0.8))',
+                border: '1.5px solid rgba(45, 212, 191, 0.45)',
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.1)',
+              }}
+              title={`לחץ ברומטרי: ${pressureData.valueString} ${pressureData.unit} (${pressureData.unitHebrew}) · ${pressureData.statusHebrew}`}
+            >
+              <div className="flex items-center gap-1">
+                {/* Compass-like Circular Barometer Dial (28px) */}
+                <BarometerGauge pressureHpa={forecast.pressure} countryCode={countryCode} size="sm" />
+                <span className="text-xs font-bold font-mono text-teal-200 tracking-tight">
+                  {pressureData.valueString}
+                </span>
+              </div>
+              <span className="text-[9px] text-teal-300 font-mono font-semibold" title={pressureData.unitHebrew}>
+                {pressureData.unit}
+              </span>
             </div>
-            <span className="text-xs font-bold font-mono text-teal-200 tracking-tight">
-              {forecast.pressure}
-            </span>
-          </div>
-          <span className="text-[9px] text-slate-400 font-sans">hPa</span>
-        </div>
+          );
+        })()}
       </div>
 
       {/* ========================================================= */}
