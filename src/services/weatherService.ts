@@ -547,15 +547,21 @@ export function generateRealisticGraphCastForecast(location: LocationItem): Weat
     const formattedDate = `${day}/${m}`;
     const dateStr = dayDate.toISOString().split('T')[0];
 
-    // Day variation
+    // Day temperature variation
     const variation = Math.sin(i * 0.7) * 2.5;
     const maxTemp = +(baseTemp + 3 + variation).toFixed(1);
     const minTemp = +(baseTemp - 3 + variation * 0.8).toFixed(1);
-    const code = (i === 3 || i === 7) ? 2 : (i === 5 ? 61 : 0);
+
+    // City-specific pseudo-random seed based on geographical coordinates so different cities have distinct weather
+    const citySeed = Math.abs(Math.sin(lat * 12.9898 + location.longitude * 78.233 + (i + 1) * 4.1415));
+    const isArid = Math.abs(lat) >= 15 && Math.abs(lat) <= 33 && !isCoastal;
+    const hasRain = !isArid && (citySeed > 0.84);
+    const hasClouds = citySeed > 0.48;
+    const code = hasRain ? 61 : hasClouds ? 2 : 0;
     const decoded = decodeWmoWeather(code);
 
-    const windSpeed = Math.round(18 + Math.cos(i) * 9);
-    const windDir = Math.round(300 + Math.sin(i) * 35);
+    const windSpeed = Math.round(14 + Math.cos(i + lat) * 8);
+    const windDir = Math.round((280 + Math.sin(i + location.longitude) * 50 + 360) % 360);
     const baseHum = isCoastal ? 66 : 52;
     const humidity = code === 61 
       ? Math.round(82 + (i % 3) * 3) 
@@ -563,9 +569,9 @@ export function generateRealisticGraphCastForecast(location: LocationItem): Weat
     const pressure = Math.round(1016 + Math.cos(i * 0.8) * 5);
     const waveHeight = isCoastal ? +(1.1 + Math.sin(i) * 0.4).toFixed(1) : 0;
     const isSnow = decoded.category === 'snow' || minTemp <= 1;
-    const precipProb = code === 61 ? 75 : (i === 3 || i === 7) ? 35 : 10;
+    const precipProb = code === 61 ? Math.round(65 + citySeed * 25) : hasClouds ? Math.round(15 + citySeed * 15) : 5;
     const precipType: 'rain' | 'snow' | 'none' = isSnow ? 'snow' : precipProb >= 20 ? 'rain' : 'none';
-    const precipSum = code === 61 ? +(4.2 + (i % 3) * 1.5).toFixed(1) : (i === 3 || i === 7) ? 1.8 : 0;
+    const precipSum = code === 61 ? +(1.5 + citySeed * 6).toFixed(1) : 0;
 
     daily.push({
       date: dateStr,
@@ -640,8 +646,8 @@ export function generateRealisticGraphCastForecast(location: LocationItem): Weat
 export async function fetchWeatherData(location: LocationItem): Promise<WeatherPayload> {
   const { latitude, longitude, timezone } = location;
 
-  // Open-Meteo API query with current, daily, and hourly parameters for precise humidity & pressure calculations
-  const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,relative_humidity_2m,apparent_temperature,is_day,precipitation,weather_code,surface_pressure,wind_speed_10m,wind_direction_10m&hourly=temperature_2m,relative_humidity_2m,surface_pressure,precipitation_probability&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max,wind_speed_10m_max,wind_direction_10m_dominant&timezone=${encodeURIComponent(
+  // Open-Meteo API query with current, daily, and hourly parameters for precise humidity, pressure & wind calculations
+  const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,relative_humidity_2m,apparent_temperature,is_day,precipitation,weather_code,surface_pressure,wind_speed_10m,wind_direction_10m&hourly=temperature_2m,relative_humidity_2m,surface_pressure,precipitation_probability,weather_code,wind_speed_10m&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max,wind_speed_10m_max,wind_direction_10m_dominant&timezone=${encodeURIComponent(
     timezone
   )}&forecast_days=10`;
 
@@ -749,7 +755,7 @@ export async function fetchWeatherData(location: LocationItem): Promise<WeatherP
     windDirection: Math.round(cur.wind_direction_10m),
     windGusts: Math.round((cur.wind_gusts_10m || cur.wind_speed_10m * 1.3) * 10) / 10,
     surfacePressure: Math.round(cur.surface_pressure),
-    cloudCover: Math.round(cur.cloud_cover),
+    cloudCover: Math.round(cur.cloud_cover ?? 20),
     precipitation: cur.precipitation,
     uvIndex: Math.round(weatherJson.daily?.uv_index_max?.[0] || 4),
     visibilityKm: 12.5,
@@ -858,11 +864,11 @@ export async function fetchWeatherData(location: LocationItem): Promise<WeatherP
       hourly.push({
         time: rawTime,
         formattedTime: timeParts,
-        temperature: Math.round(weatherJson.hourly.temperature_2m[idx]),
-        humidity: Math.round(weatherJson.hourly.relative_humidity_2m[idx]),
-        precipitationProb: Math.round(weatherJson.hourly.precipitation_probability?.[idx] || 0),
-        weatherCode: weatherJson.hourly.weather_code[idx],
-        windSpeed: Math.round(weatherJson.hourly.wind_speed_10m[idx]),
+        temperature: Math.round(weatherJson.hourly?.temperature_2m?.[idx] ?? cur.temperature_2m),
+        humidity: Math.round(weatherJson.hourly?.relative_humidity_2m?.[idx] ?? cur.relative_humidity_2m),
+        precipitationProb: Math.round(weatherJson.hourly?.precipitation_probability?.[idx] ?? 0),
+        weatherCode: weatherJson.hourly?.weather_code?.[idx] ?? cur.weather_code,
+        windSpeed: Math.round(weatherJson.hourly?.wind_speed_10m?.[idx] ?? cur.wind_speed_10m),
       });
     }
   }
