@@ -556,7 +556,10 @@ export function generateRealisticGraphCastForecast(location: LocationItem): Weat
 
     const windSpeed = Math.round(18 + Math.cos(i) * 9);
     const windDir = Math.round(300 + Math.sin(i) * 35);
-    const humidity = Math.round(48 + Math.sin(i * 1.2) * 18);
+    const baseHum = isCoastal ? 66 : 52;
+    const humidity = code === 61 
+      ? Math.round(82 + (i % 3) * 3) 
+      : Math.min(95, Math.max(25, Math.round(baseHum + Math.sin(i * 1.2) * 12 - (maxTemp - 22) * 0.7)));
     const pressure = Math.round(1016 + Math.cos(i * 0.8) * 5);
     const waveHeight = isCoastal ? +(1.1 + Math.sin(i) * 0.4).toFixed(1) : 0;
     const isSnow = decoded.category === 'snow' || minTemp <= 1;
@@ -637,8 +640,8 @@ export function generateRealisticGraphCastForecast(location: LocationItem): Weat
 export async function fetchWeatherData(location: LocationItem): Promise<WeatherPayload> {
   const { latitude, longitude, timezone } = location;
 
-  // Streamlined URL requesting only what is needed, reducing server strain
-  const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,relative_humidity_2m,apparent_temperature,is_day,precipitation,weather_code,surface_pressure,wind_speed_10m,wind_direction_10m&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max,wind_speed_10m_max,wind_direction_10m_dominant&timezone=${encodeURIComponent(
+  // Open-Meteo API query with current, daily, and hourly parameters for precise humidity & pressure calculations
+  const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,relative_humidity_2m,apparent_temperature,is_day,precipitation,weather_code,surface_pressure,wind_speed_10m,wind_direction_10m&hourly=temperature_2m,relative_humidity_2m,surface_pressure,precipitation_probability&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max,wind_speed_10m_max,wind_direction_10m_dominant&timezone=${encodeURIComponent(
     timezone
   )}&forecast_days=10`;
 
@@ -827,8 +830,8 @@ export async function fetchWeatherData(location: LocationItem): Promise<WeatherP
         windSpeed: dayWind,
         windDirection: dayWindDir,
         windDirectionCode: dayWindDirCode,
-        humidity: avgHum,
-        pressure: avgPres || 1018,
+        humidity: (i === 0 && cur?.relative_humidity_2m !== undefined) ? Math.round(cur.relative_humidity_2m) : avgHum,
+        pressure: (i === 0 && cur?.surface_pressure !== undefined) ? Math.round(cur.surface_pressure) : (avgPres || 1018),
         waveHeight: dayWaveHeight,
         precipitationSum: +(weatherJson.daily.precipitation_sum?.[i] || 0).toFixed(1),
         precipitationProbability: precipProb,
