@@ -729,7 +729,9 @@ export default function App() {
                   <div className="w-full glass-panel-subtle rounded-2xl p-4 border border-cyan-500/30 text-right space-y-3">
                     <div className="flex items-center justify-between border-b border-white/10 pb-2">
                       <div className="flex items-center gap-2">
-                        <span className="text-base">{day.precipitationType === 'snow' ? '❄️' : '🌧️'}</span>
+                        <span className="text-base">
+                          {day.precipitationType === 'snow' ? '❄️' : day.precipitationType === 'rain' ? '🌧️' : '☀️'}
+                        </span>
                         <span className="font-bold text-xs text-white">
                           פירוט צפי משקעים ל-{day.dayName} ({day.formattedDate})
                         </span>
@@ -757,7 +759,7 @@ export default function App() {
                       <div className="bg-slate-900/80 p-2 rounded-xl border border-slate-700/60">
                         <div className="text-[10px] text-slate-400">סוג</div>
                         <div className="text-xs font-bold text-slate-200 mt-1">
-                          {day.precipitationType === 'snow' ? 'שלג' : prob >= 15 ? 'גשם' : 'יבש'}
+                          {day.precipitationType === 'snow' ? 'שלג' : day.precipitationType === 'rain' ? 'גשם' : 'יבש (ללא גשם)'}
                         </div>
                       </div>
                     </div>
