@@ -1,4 +1,4 @@
- import { CurrentWeather, DailyForecast, HourlyPoint, LocationItem, WaveData, WeatherCategory, WeatherPayload } from '../types';
+import { CurrentWeather, DailyForecast, HourlyPoint, LocationItem, WaveData, WeatherCategory, WeatherPayload } from '../types';
 
 export const PRESET_CITIES: LocationItem[] = [
   {
@@ -250,6 +250,79 @@ export const PRESET_CITIES: LocationItem[] = [
   }
 ];
 
+/**
+ * Accurately determines if a location is situated directly on an oceanic or sea coastline
+ * suitable for marine surf / wave conditions, or if it is an inland terrestrial city.
+ * Jerusalem, Beersheba, London, Paris, Rome, etc. are strictly INLAND (false).
+ */
+export function isCityCoastal(location: LocationItem): boolean {
+  if (typeof location.isCoastal === 'boolean') {
+    return location.isCoastal;
+  }
+
+  const nameLower = (location.name || '').toLowerCase();
+  const nameHe = location.nameHe || '';
+
+  // Explicit inland cities in Israel (Jerusalem, Beersheba, Tiberias, Safed, etc.)
+  const inlandIsraelNames = [
+    'ירושלים', 'באר שבע', 'באר-שבע', 'טבריה', 'צפת', 'נצרת', 'עפולה',
+    'מודיעין', 'כרמיאל', 'קרית שמונה', 'קריית שמונה', 'אריאל', 'בית שמש',
+    'מעלה אדומים', 'לוד', 'רמלה', 'כפר סבא', 'רעננה', 'הוד השרון', 'פתח תקווה',
+    'פתח-תקווה', 'רמת גן', 'גבעתיים', 'דימונה', 'ערד', 'ירוחם', 'מצפה רמון',
+    'בית שאן', 'Jerusalem', 'Beersheba', 'Tiberias', 'Safed', 'Nazareth', 'Afula', 'Modiin'
+  ];
+  if (inlandIsraelNames.some((n) => nameLower.includes(n.toLowerCase()) || nameHe.includes(n))) {
+    return false;
+  }
+
+  // Coastal cities in Israel (Mediterranean coast & Eilat)
+  const coastalIsraelNames = [
+    'נהריה', 'תל אביב', 'תל-אביב', 'חיפה', 'עכו', 'נתניה', 'אשדוד',
+    'אשקלון', 'הרצליה', 'בת ים', 'בת-ים', 'חדרה', 'אילת', 'קיסריה',
+    'עתלית', 'זיכרון יעקב', 'זכרון יעקב', 'Nahariya', 'Tel Aviv', 'Haifa',
+    'Acre', 'Netanya', 'Ashdod', 'Ashkelon', 'Herzliya', 'Bat Yam', 'Eilat'
+  ];
+  if (coastalIsraelNames.some((n) => nameLower.includes(n.toLowerCase()) || nameHe.includes(n))) {
+    return true;
+  }
+
+  // Israel boundary check based on coordinates
+  const isIsrael = location.countryCode === 'IL' || location.country?.includes('ישראל') || location.country?.toLowerCase().includes('israel');
+  if (isIsrael) {
+    if (location.latitude < 29.65) return true; // Eilat / Red Sea
+    // Along Israel Mediterranean coast: lon must be west of 34.98 (close to shoreline) and elevation <= 50m
+    if (location.longitude >= 34.45 && location.longitude <= 34.98 && (location.elevation === undefined || location.elevation <= 50)) {
+      return true;
+    }
+    return false;
+  }
+
+  // Global Inland Cities (Never show surf waves!)
+  const globalInland = [
+    'london', 'paris', 'rome', 'berlin', 'madrid', 'vienna', 'prague', 'warsaw',
+    'cairo', 'riyadh', 'amman', 'damascus', 'moscow', 'beijing', 'new delhi',
+    'mexico city', 'johannesburg', 'toronto', 'chicago', 'denver', 'budapest',
+    'bucharest', 'kiev', 'kyiv', 'milan', 'munich', 'frankfurt', 'zurich', 'geneva'
+  ];
+  if (globalInland.some((c) => nameLower.includes(c))) {
+    return false;
+  }
+
+  // Global Coastal Cities
+  const globalCoastal = [
+    'tokyo', 'new york', 'los angeles', 'miami', 'san francisco', 'sydney',
+    'melbourne', 'dubai', 'barcelona', 'rio', 'buenos aires', 'mumbai',
+    'singapore', 'hong kong', 'honolulu', 'lisbon', 'athens', 'oslo',
+    'reykjavik', 'cape town', 'vancouver', 'san diego'
+  ];
+  if (globalCoastal.some((c) => nameLower.includes(c))) {
+    return true;
+  }
+
+  // Default to false for general safety so inland cities NEVER accidentally display surf waves
+  return false;
+}
+
 export function decodeWmoWeather(code: number): { description: string; category: WeatherCategory } {
   switch (code) {
     case 0:
@@ -452,9 +525,10 @@ export async function searchCities(query: string): Promise<LocationItem[]> {
       const data = await res.json();
       if (data.results && Array.isArray(data.results)) {
         data.results.forEach((item: any) => {
-          results.push({
+          const locName = trimmed.match(/[\u0590-\u05FF]/) && item.country_code === 'IL' ? trimmed : item.name;
+          const locItem: LocationItem = {
             id: item.id,
-            name: trimmed.match(/[\u0590-\u05FF]/) && item.country_code === 'IL' ? trimmed : item.name,
+            name: locName,
             nameHe: trimmed.match(/[\u0590-\u05FF]/) ? trimmed : item.name,
             country: item.country || '',
             countryCode: item.country_code || '',
@@ -463,8 +537,9 @@ export async function searchCities(query: string): Promise<LocationItem[]> {
             longitude: item.longitude,
             elevation: item.elevation,
             timezone: item.timezone || 'UTC',
-            isCoastal: item.country_code === 'IL' && (item.name.includes('Nahari') || item.name.includes('Haif') || item.name.includes('Tel') || item.name.includes('Ashd') || item.name.includes('Netan')),
-          });
+          };
+          locItem.isCoastal = isCityCoastal(locItem);
+          results.push(locItem);
         });
       }
     }
@@ -501,7 +576,7 @@ export async function searchCities(query: string): Promise<LocationItem[]> {
           const isIsrael = countryName.includes('ישראל') || countryName.toLowerCase().includes('israel');
           const tz = isIsrael ? 'Asia/Jerusalem' : 'UTC';
 
-          results.push({
+          const locItem: LocationItem = {
             id: Math.round(lat * 10000 + lon * 1000),
             name: cityName,
             nameHe: cityName,
@@ -510,8 +585,9 @@ export async function searchCities(query: string): Promise<LocationItem[]> {
             latitude: lat,
             longitude: lon,
             timezone: tz,
-            isCoastal: isIsrael && (lat >= 31.5 && lat <= 33.1 && lon <= 35.1),
-          });
+          };
+          locItem.isCoastal = isCityCoastal(locItem);
+          results.push(locItem);
         });
       }
     }
@@ -535,7 +611,7 @@ export function generateRealisticGraphCastForecast(location: LocationItem): Weat
   const isWinter = isNorthern ? (month >= 11 || month <= 1) : (month >= 5 && month <= 7);
 
   const baseTemp = Math.max(-5, Math.min(35, Math.round(30 - Math.abs(lat) * 0.45 + (isSummer ? 5 : isWinter ? -6 : 0))));
-  const isCoastal = location.isCoastal ?? (Math.abs(lat) < 55 && Math.abs(location.longitude) > 10);
+  const isCoastal = isCityCoastal(location);
 
   const daily: DailyForecast[] = [];
   const compassCodes = ['NW', 'W', 'SW', 'N', 'NE', 'W', 'NW', 'NW', 'W', 'SW'];
@@ -555,7 +631,7 @@ export function generateRealisticGraphCastForecast(location: LocationItem): Weat
     // City-specific pseudo-random seed based on geographical coordinates so different cities have distinct weather
     const citySeed = Math.abs(Math.sin(lat * 12.9898 + location.longitude * 78.233 + (i + 1) * 4.1415));
     const isArid = Math.abs(lat) >= 15 && Math.abs(lat) <= 33 && !isCoastal;
-    const hasRain = !isArid && (citySeed > 0.84);
+    const hasRain = !isArid && (citySeed > 0.88);
     const hasClouds = citySeed > 0.48;
     const code = hasRain ? 61 : hasClouds ? 2 : 0;
     const decoded = decodeWmoWeather(code);
@@ -569,9 +645,22 @@ export function generateRealisticGraphCastForecast(location: LocationItem): Weat
     const pressure = Math.round(1016 + Math.cos(i * 0.8) * 5);
     const waveHeight = isCoastal ? +(1.1 + Math.sin(i) * 0.4).toFixed(1) : 0;
     const isSnow = decoded.category === 'snow' || minTemp <= 1;
-    const precipProb = code === 61 ? Math.round(65 + citySeed * 25) : hasClouds ? Math.round(15 + citySeed * 15) : 5;
-    const precipType: 'rain' | 'snow' | 'none' = isSnow ? 'snow' : precipProb >= 20 ? 'rain' : 'none';
+    const precipProb = code === 61 ? Math.round(65 + citySeed * 25) : 5;
     const precipSum = code === 61 ? +(1.5 + citySeed * 6).toFixed(1) : 0;
+    const precipType: 'rain' | 'snow' | 'none' = isSnow ? 'snow' : (precipSum > 0.1 || precipProb >= 25) ? 'rain' : 'none';
+
+    let heatStress = 'ללא עומס חום';
+    if (maxTemp >= 34) {
+      heatStress = 'עומס חום כבד';
+    } else if (maxTemp >= 30) {
+      heatStress = humidity > 55 ? 'עומס חום כבד' : 'עומס חום בינוני';
+    } else if (maxTemp >= 25) {
+      heatStress = humidity > 60 ? 'עומס חום בינוני' : 'עומס חום קל';
+    } else if (maxTemp >= 21) {
+      heatStress = 'עומס חום קל (נוח)';
+    } else {
+      heatStress = 'ללא עומס חום (נעים)';
+    }
 
     daily.push({
       date: dateStr,
@@ -594,8 +683,10 @@ export function generateRealisticGraphCastForecast(location: LocationItem): Weat
       precipitationSum: precipSum,
       precipitationProbability: precipProb,
       precipitationType: precipType,
-      surfCondition: !isCoastal ? 'מזג אוויר יבשתי' : waveHeight > 1.2 ? 'תנאי גלישה' : 'ים שקט',
+      surfCondition: isCoastal ? (waveHeight > 1.2 ? 'תנאי גלישה' : 'ים שקט') : '',
       isCoastal,
+      uvIndex: +(5.2 + Math.cos(i) * 0.8).toFixed(1),
+      heatStress,
     });
   }
 
@@ -645,9 +736,10 @@ export function generateRealisticGraphCastForecast(location: LocationItem): Weat
 
 export async function fetchWeatherData(location: LocationItem): Promise<WeatherPayload> {
   const { latitude, longitude, timezone } = location;
+  const isLocCoastal = isCityCoastal(location);
 
-  // Open-Meteo API query with current, daily, and hourly parameters for precise humidity, pressure & wind calculations
-  const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,relative_humidity_2m,apparent_temperature,is_day,precipitation,weather_code,surface_pressure,wind_speed_10m,wind_direction_10m&hourly=temperature_2m,relative_humidity_2m,surface_pressure,precipitation_probability,weather_code,wind_speed_10m&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max,wind_speed_10m_max,wind_direction_10m_dominant&timezone=${encodeURIComponent(
+  // Open-Meteo API query with current, daily, and hourly parameters for precise humidity, pressure, wind & UV calculations
+  const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,relative_humidity_2m,apparent_temperature,is_day,precipitation,weather_code,surface_pressure,wind_speed_10m,wind_direction_10m&hourly=temperature_2m,relative_humidity_2m,surface_pressure,precipitation_probability,weather_code,wind_speed_10m&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max,wind_speed_10m_max,wind_direction_10m_dominant,uv_index_max&timezone=${encodeURIComponent(
     timezone
   )}&forecast_days=10`;
 
@@ -680,7 +772,7 @@ export async function fetchWeatherData(location: LocationItem): Promise<WeatherP
     return generateRealisticGraphCastForecast(location);
   }
 
-  // 2. Fetch marine wave data for coastal evaluation
+  // 2. Fetch marine wave data ONLY for coastal cities
   let waveData: WaveData = {
     hasData: false,
     waveHeight: 0,
@@ -691,52 +783,54 @@ export async function fetchWeatherData(location: LocationItem): Promise<WeatherP
     ratingTier: 'calm',
   };
 
-  try {
-    const marineUrl = `https://marine-api.open-meteo.com/v1/marine?latitude=${latitude}&longitude=${longitude}&current=wave_height,wave_direction,wave_period&timezone=${encodeURIComponent(
-      timezone
-    )}`;
-    const marineRes = await fetch(marineUrl);
-    if (marineRes.ok) {
-      const marineJson = await marineRes.json();
-      if (marineJson?.current && typeof marineJson.current.wave_height === 'number') {
-        const heightMeters = Math.max(0, marineJson.current.wave_height);
-        const heightFeet = +(heightMeters * 3.28084).toFixed(1);
-        const direction = marineJson.current.wave_direction || 0;
-        const period = marineJson.current.wave_period || 0;
+  if (isLocCoastal) {
+    try {
+      const marineUrl = `https://marine-api.open-meteo.com/v1/marine?latitude=${latitude}&longitude=${longitude}&current=wave_height,wave_direction,wave_period&timezone=${encodeURIComponent(
+        timezone
+      )}`;
+      const marineRes = await fetch(marineUrl);
+      if (marineRes.ok) {
+        const marineJson = await marineRes.json();
+        if (marineJson?.current && typeof marineJson.current.wave_height === 'number') {
+          const heightMeters = Math.max(0, marineJson.current.wave_height);
+          const heightFeet = +(heightMeters * 3.28084).toFixed(1);
+          const direction = marineJson.current.wave_direction || 0;
+          const period = marineJson.current.wave_period || 0;
 
-        let suitability: WaveData['surfSuitability'] = 'רגוע מאוד';
-        let ratingTier: WaveData['ratingTier'] = 'calm';
+          let suitability: WaveData['surfSuitability'] = 'רגוע מאוד';
+          let ratingTier: WaveData['ratingTier'] = 'calm';
 
-        if (heightMeters < 0.4) {
-          suitability = 'רגוע מאוד';
-          ratingTier = 'calm';
-        } else if (heightMeters >= 0.4 && heightMeters <= 1.4) {
-          suitability = 'תנאים אידיאליים';
-          ratingTier = 'ideal';
-        } else if (heightMeters > 1.4 && heightMeters <= 2.5) {
-          suitability = 'גלים בינוניים';
-          ratingTier = 'moderate';
-        } else if (heightMeters > 2.5 && heightMeters <= 4.0) {
-          suitability = 'ים גבוה / מסוכן';
-          ratingTier = 'rough';
-        } else {
-          suitability = 'סוער מאוד';
-          ratingTier = 'extreme';
+          if (heightMeters < 0.4) {
+            suitability = 'רגוע מאוד';
+            ratingTier = 'calm';
+          } else if (heightMeters >= 0.4 && heightMeters <= 1.4) {
+            suitability = 'תנאים אידיאליים';
+            ratingTier = 'ideal';
+          } else if (heightMeters > 1.4 && heightMeters <= 2.5) {
+            suitability = 'גלים בינוניים';
+            ratingTier = 'moderate';
+          } else if (heightMeters > 2.5 && heightMeters <= 4.0) {
+            suitability = 'ים גבוה / מסוכן';
+            ratingTier = 'rough';
+          } else {
+            suitability = 'סוער מאוד';
+            ratingTier = 'extreme';
+          }
+
+          waveData = {
+            hasData: true,
+            waveHeight: +(heightMeters.toFixed(2)),
+            waveHeightFeet: heightFeet,
+            waveDirection: Math.round(direction),
+            wavePeriod: Math.round(period * 10) / 10,
+            surfSuitability: suitability,
+            ratingTier: ratingTier,
+          };
         }
-
-        waveData = {
-          hasData: true,
-          waveHeight: +(heightMeters.toFixed(2)),
-          waveHeightFeet: heightFeet,
-          waveDirection: Math.round(direction),
-          wavePeriod: Math.round(period * 10) / 10,
-          surfSuitability: suitability,
-          ratingTier: ratingTier,
-        };
       }
+    } catch (marineErr) {
+      // Inland cities naturally don't have marine wave data, which is completely expected
     }
-  } catch (marineErr) {
-    // Inland cities naturally don't have marine wave data, which is completely expected
   }
 
   // Parse current weather
@@ -757,7 +851,7 @@ export async function fetchWeatherData(location: LocationItem): Promise<WeatherP
     surfacePressure: Math.round(cur.surface_pressure),
     cloudCover: Math.round(cur.cloud_cover ?? 20),
     precipitation: cur.precipitation,
-    uvIndex: Math.round(weatherJson.daily?.uv_index_max?.[0] || 4),
+    uvIndex: Math.round(weatherJson.daily?.uv_index_max?.[0] || 5),
     visibilityKm: 12.5,
   };
 
@@ -803,24 +897,49 @@ export async function fetchWeatherData(location: LocationItem): Promise<WeatherP
       const dayWindDir = Math.round(weatherJson.daily.wind_direction_10m_dominant?.[i] ?? cur.wind_direction_10m);
       const dayWindDirCode = getCompassCode(dayWindDir);
 
-      // Wave calculation for day
-      const dayWaveHeight = waveData.hasData
+      // Wave calculation for day - STRICTLY restricted to coastal cities with valid marine data
+      const dayWaveHeight = (isLocCoastal && waveData.hasData)
         ? +(Math.max(0.3, waveData.waveHeight + ((i % 3) - 1) * 0.25).toFixed(1))
         : 0;
 
-      const daySurfCond = !waveData.hasData
-        ? 'יבשה / ללא ים'
-        : dayWaveHeight < 0.6
-        ? 'ים שקט'
-        : dayWaveHeight <= 1.5
-        ? 'תנאי גלישה'
-        : dayWaveHeight <= 2.5
-        ? 'גלים בינוניים'
-        : 'ים סוער';
+      const daySurfCond = (isLocCoastal && waveData.hasData)
+        ? (dayWaveHeight < 0.6
+          ? 'ים שקט'
+          : dayWaveHeight <= 1.5
+          ? 'תנאי גלישה'
+          : dayWaveHeight <= 2.5
+          ? 'גלים בינוניים'
+          : 'ים סוער')
+        : '';
 
-      const precipProb = Math.round(weatherJson.daily.precipitation_probability_max?.[i] ?? (code >= 51 ? 65 : code >= 1 ? 20 : 0));
+      const rawPrecipProb = weatherJson.daily.precipitation_probability_max?.[i];
+      const precipSum = +(weatherJson.daily.precipitation_sum?.[i] || 0).toFixed(1);
+      const precipProb = typeof rawPrecipProb === 'number'
+        ? Math.round(rawPrecipProb)
+        : (code >= 51 ? 65 : 0);
+
       const isSnow = decodedWeather.category === 'snow' || +(weatherJson.daily.temperature_2m_min[i]) <= 1;
-      const precipType: 'rain' | 'snow' | 'none' = isSnow ? 'snow' : precipProb >= 15 ? 'rain' : 'none';
+      // CRITICAL FIX: Only classify as 'rain' if probability is >= 25% or precipitation sum > 0.1 mm
+      const precipType: 'rain' | 'snow' | 'none' = isSnow ? 'snow' : (precipSum > 0.1 || precipProb >= 25) ? 'rain' : 'none';
+
+      const maxT = +(weatherJson.daily.temperature_2m_max[i]).toFixed(1);
+      const dayHum = (i === 0 && cur?.relative_humidity_2m !== undefined) ? Math.round(cur.relative_humidity_2m) : avgHum;
+
+      let heatStress = 'ללא עומס חום';
+      if (maxT >= 34) {
+        heatStress = 'עומס חום כבד עד קיצוני';
+      } else if (maxT >= 30) {
+        heatStress = dayHum > 55 ? 'עומס חום כבד' : 'עומס חום בינוני';
+      } else if (maxT >= 25) {
+        heatStress = dayHum > 60 ? 'עומס חום בינוני' : 'עומס חום קל';
+      } else if (maxT >= 21) {
+        heatStress = 'עומס חום קל (נוח)';
+      } else {
+        heatStress = 'ללא עומס חום (נעים)';
+      }
+
+      const rawUv = weatherJson.daily?.uv_index_max?.[i];
+      const uvVal = typeof rawUv === 'number' ? +(rawUv.toFixed(1)) : 5.0;
 
       daily.push({
         date: dateStr,
@@ -829,22 +948,24 @@ export async function fetchWeatherData(location: LocationItem): Promise<WeatherP
         dayOfWeek: getHebrewDayName(dateStr, timezone),
         dayIndex: i + 1,
         minTemp: +(weatherJson.daily.temperature_2m_min[i]).toFixed(1),
-        maxTemp: +(weatherJson.daily.temperature_2m_max[i]).toFixed(1),
+        maxTemp: maxT,
         weatherCode: code,
         weatherDescription: decodedWeather.description,
         weatherCategory: decodedWeather.category,
         windSpeed: dayWind,
         windDirection: dayWindDir,
         windDirectionCode: dayWindDirCode,
-        humidity: (i === 0 && cur?.relative_humidity_2m !== undefined) ? Math.round(cur.relative_humidity_2m) : avgHum,
+        humidity: dayHum,
         pressure: (i === 0 && cur?.surface_pressure !== undefined) ? Math.round(cur.surface_pressure) : (avgPres || 1018),
         waveHeight: dayWaveHeight,
-        precipitationSum: +(weatherJson.daily.precipitation_sum?.[i] || 0).toFixed(1),
+        precipitationSum: precipSum,
         precipitationProbability: precipProb,
         precipitationType: precipType,
         windSpeedMax: dayWind,
         surfCondition: daySurfCond,
-        isCoastal: waveData.hasData,
+        isCoastal: isLocCoastal,
+        uvIndex: uvVal,
+        heatStress,
       });
     }
   }
