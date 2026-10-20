@@ -69,6 +69,8 @@ export interface DailyForecast {
   precipitationType: 'rain' | 'snow' | 'none';
   surfCondition: string;
   isCoastal: boolean;
+  uvIndex?: number;
+  heatStress?: string;
 }
 
 export interface HourlyPoint {
