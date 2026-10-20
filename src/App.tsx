@@ -8,6 +8,8 @@ import { LocationItem, WeatherPayload } from './types';
 import { PRESET_CITIES, fetchWeatherData, getLocalTimeFormatted, generateRealisticGraphCastForecast, searchCities } from './services/weatherService';
 import { WeatherCardDay } from './components/WeatherCardDay';
 import { GoogleModelInfoModal } from './components/GoogleModelInfoModal';
+import { BarometerGauge } from './components/BarometerGauge';
+import { getPressureForCountry } from './utils/pressureUtils';
 import { Search, MapPin, Loader2, X, Compass, Clock, Cpu, Sparkles, LayoutGrid, Calendar, ChevronRight, ChevronLeft, CheckCircle2, Zap } from 'lucide-react';
 import oceanBg from './assets/images/ocean_wave_sunset_1792248052222.jpg';
 
@@ -528,7 +530,7 @@ export default function App() {
               מחשב תחזית אוטומטית ל-10 ימים עבור {selectedLocation.name}...
             </div>
             <div className="text-xs font-mono text-slate-400">
-              עיבוד נתוני מודל מזג אוויר וגלים בחוף
+              {selectedLocation.isCoastal ? 'עיבוד נתוני מודל אטמוספרי וגלי ים בחוף' : 'עיבוד נתוני מודל אטמוספרי ואינדקס יבשתי'}
             </div>
           </div>
         )}
@@ -578,6 +580,7 @@ export default function App() {
                 <div key={dayForecast.date} className="flex justify-center">
                   <WeatherCardDay
                     forecast={dayForecast}
+                    countryCode={selectedLocation.countryCode}
                     isSelected={selectedDayIndex === idx}
                     isScanning={isCalculating}
                     scanIndex={idx}
@@ -637,10 +640,74 @@ export default function App() {
             <div className="flex flex-col items-center justify-center py-4 space-y-4 max-w-md mx-auto">
               <WeatherCardDay
                 forecast={weatherData.daily[selectedDayIndex]}
+                countryCode={selectedLocation.countryCode}
                 isSelected={true}
                 isScanning={isCalculating}
                 scanIndex={selectedDayIndex}
               />
+
+              {/* Detailed Barometer & Atmosphere Telemetry for Selected Day */}
+              {(() => {
+                const day = weatherData.daily[selectedDayIndex];
+                const pInfo = getPressureForCountry(day.pressure, selectedLocation.countryCode);
+                const isIsrael = (selectedLocation.countryCode || 'IL').toUpperCase() === 'IL';
+                return (
+                  <div className="w-full glass-panel-subtle rounded-2xl p-4 border border-teal-500/30 text-right space-y-3">
+                    <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-base">🧭</span>
+                        <span className="font-bold text-xs text-white">
+                          מד לחץ ברומטרי ל-{day.dayName} ({day.formattedDate})
+                        </span>
+                      </div>
+                      <span className="text-[10px] font-mono font-bold text-teal-300 bg-teal-950/80 px-2.5 py-0.5 rounded-full border border-teal-500/40">
+                        {pInfo.unit} · {pInfo.countryName}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-4 bg-slate-900/80 p-3 rounded-xl border border-slate-700/60">
+                      {/* Right side info */}
+                      <div className="space-y-1 text-right">
+                        <div className="text-[11px] text-slate-400">
+                          {isIsrael ? 'מידת לחץ נהוגה בישראל (השירות המטאורולוגי):' : `מידת לחץ מקומית ב-${pInfo.countryName}:`}
+                        </div>
+                        <div className="text-2xl font-black font-mono text-teal-200 flex items-center gap-1.5">
+                          <span>{pInfo.valueString}</span>
+                          <span className="text-sm font-sans font-normal text-teal-400">{pInfo.unit}</span>
+                        </div>
+                        <div className="text-xs font-semibold text-amber-300 flex items-center gap-1">
+                          <span>מצב:</span>
+                          <span className="text-white">{pInfo.statusHebrew}</span>
+                        </div>
+                      </div>
+
+                      {/* Left side: Large Compass-like Barometer Gauge */}
+                      <div className="flex flex-col items-center gap-1">
+                        <BarometerGauge pressureHpa={day.pressure} countryCode={selectedLocation.countryCode} size="lg" />
+                        <span className="text-[9px] text-slate-400 font-mono">1013 hPa תקני</span>
+                      </div>
+                    </div>
+
+                    {/* Unit comparison banner */}
+                    <div className="text-[11px] text-slate-300 bg-slate-900/60 p-2.5 rounded-xl border border-white/5 flex flex-wrap items-center justify-between gap-2">
+                      <span className="text-slate-400">השוואת מידות עולמית:</span>
+                      <div className="flex items-center gap-2 font-mono text-[10px] text-teal-300">
+                        <span className={pInfo.unit === 'hPa' ? 'font-bold text-white bg-teal-900/60 px-1.5 py-0.5 rounded' : ''}>
+                          {Math.round(day.pressure)} hPa (ישראל/אירופה)
+                        </span>
+                        <span className="text-slate-600">|</span>
+                        <span className={pInfo.unit === 'inHg' ? 'font-bold text-white bg-teal-900/60 px-1.5 py-0.5 rounded' : ''}>
+                          {(day.pressure * 0.02953).toFixed(2)} inHg (ארה״ב)
+                        </span>
+                        <span className="text-slate-600">|</span>
+                        <span className={pInfo.unit === 'mmHg' ? 'font-bold text-white bg-teal-900/60 px-1.5 py-0.5 rounded' : ''}>
+                          {Math.round(day.pressure * 0.75006)} mmHg
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Detailed Precipitation Breakdown for Selected Day */}
               {(() => {
