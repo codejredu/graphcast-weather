@@ -162,7 +162,7 @@ export const WeatherCardDay: React.FC<WeatherCardDayProps> = ({
                 </>
               )}
             </div>
-          ) : forecast.precipitationType === 'rain' ? (
+          ) : forecast.precipitationType === 'rain' && ((forecast.precipitationSum ?? 0) > 0.1 || forecast.precipitationProbability >= 35) ? (
             <div className="text-[10px] font-mono font-medium text-cyan-200 bg-slate-900/85 px-2 py-0.5 rounded-full border border-cyan-500/40 flex items-center gap-1 mt-1 shadow-sm">
               <span>🌧️</span>
               <span>גשם: {forecast.precipitationProbability}%</span>
@@ -174,10 +174,9 @@ export const WeatherCardDay: React.FC<WeatherCardDayProps> = ({
           ) : (
             <div className="text-[10px] font-mono font-medium text-emerald-300 bg-slate-900/85 px-2 py-0.5 rounded-full border border-emerald-500/40 flex items-center gap-1 mt-1 shadow-sm">
               <span>☀️</span>
-              <span>ללא גשם (יבש)</span>
-              {forecast.precipitationProbability > 0 && (
-                <span className="text-slate-400 text-[9px]">({forecast.precipitationProbability}%)</span>
-              )}
+              <span>בהיר ויבש</span>
+              <span className="text-slate-500">•</span>
+              <span className="text-slate-300 font-mono">0 מ"מ גשם</span>
             </div>
           )}
         </div>
@@ -368,7 +367,7 @@ export const WeatherCardDay: React.FC<WeatherCardDayProps> = ({
         </div>
 
         {/* 2. Rain / Snow Chance & Predicted mm Capsule */}
-        {forecast.precipitationType === 'none' ? (
+        {forecast.precipitationType === 'none' || ((forecast.precipitationSum ?? 0) <= 0.1 && forecast.precipitationProbability < 35) ? (
           <div
             className="px-1.5 py-1 rounded-xl flex flex-col items-center justify-center gap-0.5"
             style={{
@@ -376,7 +375,7 @@ export const WeatherCardDay: React.FC<WeatherCardDayProps> = ({
               border: '1.5px solid rgba(52, 211, 153, 0.35)',
               boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.1)',
             }}
-            title="ללא משקעים חזויים (מזג אוויר יבש לחלוטין)"
+            title="ללא משקעים חזויים (מזג אוויר בהיר ויבש לחלוטין)"
           >
             <div className="flex items-center gap-1">
               <span className="text-[10px] filter drop-shadow-[0_0_3px_#34d399]">☀️</span>
