@@ -1,4 +1,4 @@
-import { CurrentWeather, DailyForecast, HourlyPoint, LocationItem, WaveData, WeatherCategory, WeatherPayload } from '../types';
+ import { CurrentWeather, DailyForecast, HourlyPoint, LocationItem, WaveData, WeatherCategory, WeatherPayload } from '../types';
 
 export const PRESET_CITIES: LocationItem[] = [
   {
@@ -914,13 +914,52 @@ export async function fetchWeatherData(location: LocationItem): Promise<WeatherP
 
       const rawPrecipProb = weatherJson.daily.precipitation_probability_max?.[i];
       const precipSum = +(weatherJson.daily.precipitation_sum?.[i] || 0).toFixed(1);
-      const precipProb = typeof rawPrecipProb === 'number'
+      let precipProb = typeof rawPrecipProb === 'number'
         ? Math.round(rawPrecipProb)
         : (code >= 51 ? 65 : 0);
 
+      // Physical & Meteorological Consistency Rules:
+      // In nature, rain cannot fall from a cloudless sky. If sky is clear (code 0, 1) and sum is 0,
+      // ensemble precipitation probability is negligible background noise (0-10%).
+      const isClearSky = code === 0 || code === 1 || decodedWeather.category === 'clear';
+      if (isClearSky && precipSum <= 0.1) {
+        precipProb = Math.min(precipProb, 10);
+      }
+
       const isSnow = decodedWeather.category === 'snow' || +(weatherJson.daily.temperature_2m_min[i]) <= 1;
-      // CRITICAL FIX: Only classify as 'rain' if probability is >= 25% or precipitation sum > 0.1 mm
-      const precipType: 'rain' | 'snow' | 'none' = isSnow ? 'snow' : (precipSum > 0.1 || precipProb >= 25) ? 'rain' : 'none';
+
+      // Actual rain requires either measurable precipitation (> 0.1 mm), a rainy WMO code (51-67, 80-82, 95-99),
+      // or significant probability (>= 35%) with overcast/cloudy conditions.
+      const isActualRain = !isSnow && (
+        precipSum > 0.1 ||
+        (code >= 51 && code <= 67) ||
+        (code >= 80 && code <= 82) ||
+        (code >= 95 && code <= 99) ||
+        (precipProb >= 35 && !isClearSky)
+      );
+
+      const precipType: 'rain' | 'snow' | 'none' = isSnow
+        ? 'snow'
+        : isActualRain
+        ? 'rain'
+        : 'none';
+
+      // Ensure weatherCategory and icon are 100% consistent with precipitation:
+      // If there is actual rain or snow, sky CANNOT be bare sun with 0 clouds!
+      let resolvedCategory = decodedWeather.category;
+      let resolvedDescription = decodedWeather.description;
+      if (precipType === 'rain' && resolvedCategory === 'clear') {
+        resolvedCategory = 'rain';
+        resolvedDescription = 'גשם קל עם עננות';
+      } else if (precipType === 'snow' && resolvedCategory === 'clear') {
+        resolvedCategory = 'snow';
+        resolvedDescription = 'שלג קל עם עננות';
+      } else if (precipType === 'none' && precipProb < 35 && precipSum === 0) {
+        // Guarantee dry label when there is no rain
+        if (code === 0) {
+          resolvedDescription = 'בהיר לחלוטין';
+        }
+      }
 
       const maxT = +(weatherJson.daily.temperature_2m_max[i]).toFixed(1);
       const dayHum = (i === 0 && cur?.relative_humidity_2m !== undefined) ? Math.round(cur.relative_humidity_2m) : avgHum;
@@ -950,8 +989,8 @@ export async function fetchWeatherData(location: LocationItem): Promise<WeatherP
         minTemp: +(weatherJson.daily.temperature_2m_min[i]).toFixed(1),
         maxTemp: maxT,
         weatherCode: code,
-        weatherDescription: decodedWeather.description,
-        weatherCategory: decodedWeather.category,
+        weatherDescription: resolvedDescription,
+        weatherCategory: resolvedCategory,
         windSpeed: dayWind,
         windDirection: dayWindDir,
         windDirectionCode: dayWindDirCode,
