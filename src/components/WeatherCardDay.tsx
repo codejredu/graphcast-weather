@@ -151,14 +151,35 @@ export const WeatherCardDay: React.FC<WeatherCardDayProps> = ({
           {renderWeatherIcon()}
 
           {/* Rain / Snow chance indicator + Precipitation mm */}
-          <div className="text-[10px] font-mono font-medium text-cyan-200 bg-slate-900/85 px-2 py-0.5 rounded-full border border-cyan-500/40 flex items-center gap-1 mt-1 shadow-sm">
-            <span>{forecast.precipitationType === 'snow' ? '❄️' : '🌧️'}</span>
-            <span>סיכוי: {forecast.precipitationProbability}%</span>
-            <span className="text-slate-500">•</span>
-            <span className="text-amber-300 font-bold tracking-tight">
-              צפי: {forecast.precipitationSum !== undefined ? `${forecast.precipitationSum} מ"מ` : '0 מ"מ'}
-            </span>
-          </div>
+          {forecast.precipitationType === 'snow' ? (
+            <div className="text-[10px] font-mono font-medium text-purple-200 bg-purple-950/85 px-2 py-0.5 rounded-full border border-purple-500/40 flex items-center gap-1 mt-1 shadow-sm">
+              <span>❄️</span>
+              <span>שלג: {forecast.precipitationProbability}%</span>
+              {forecast.precipitationSum !== undefined && forecast.precipitationSum > 0 && (
+                <>
+                  <span className="text-slate-500">•</span>
+                  <span className="text-amber-300 font-bold tracking-tight">{forecast.precipitationSum} מ"מ</span>
+                </>
+              )}
+            </div>
+          ) : forecast.precipitationType === 'rain' ? (
+            <div className="text-[10px] font-mono font-medium text-cyan-200 bg-slate-900/85 px-2 py-0.5 rounded-full border border-cyan-500/40 flex items-center gap-1 mt-1 shadow-sm">
+              <span>🌧️</span>
+              <span>גשם: {forecast.precipitationProbability}%</span>
+              <span className="text-slate-500">•</span>
+              <span className="text-amber-300 font-bold tracking-tight">
+                צפי: {forecast.precipitationSum ?? 0} מ"מ
+              </span>
+            </div>
+          ) : (
+            <div className="text-[10px] font-mono font-medium text-emerald-300 bg-slate-900/85 px-2 py-0.5 rounded-full border border-emerald-500/40 flex items-center gap-1 mt-1 shadow-sm">
+              <span>☀️</span>
+              <span>ללא גשם (יבש)</span>
+              {forecast.precipitationProbability > 0 && (
+                <span className="text-slate-400 text-[9px]">({forecast.precipitationProbability}%)</span>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Right: Date Capsule & Day Name */}
@@ -347,31 +368,51 @@ export const WeatherCardDay: React.FC<WeatherCardDayProps> = ({
         </div>
 
         {/* 2. Rain / Snow Chance & Predicted mm Capsule */}
-        <div
-          className="px-1.5 py-1 rounded-xl flex flex-col items-center justify-center gap-0.5"
-          style={{
-            background: forecast.precipitationType === 'snow'
-              ? 'linear-gradient(135deg, rgba(168, 85, 247, 0.25), rgba(15, 23, 42, 0.8))'
-              : 'linear-gradient(135deg, rgba(6, 182, 212, 0.25), rgba(15, 23, 42, 0.8))',
-            border: forecast.precipitationType === 'snow'
-              ? '1.5px solid rgba(192, 132, 252, 0.45)'
-              : '1.5px solid rgba(34, 211, 238, 0.45)',
-            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.1)',
-          }}
-          title={`סיכוי: ${forecast.precipitationProbability}% | צפי כמות משקעים: ${forecast.precipitationSum ?? 0} מ"מ`}
-        >
-          <div className="flex items-center gap-1">
-            <span className="text-[10px] filter drop-shadow-[0_0_3px_#38bdf8]">
-              {forecast.precipitationType === 'snow' ? '❄️' : '🌧️'}
-            </span>
-            <span className="text-xs font-bold font-mono text-sky-200 tracking-tight">
-              {forecast.precipitationProbability}%
+        {forecast.precipitationType === 'none' ? (
+          <div
+            className="px-1.5 py-1 rounded-xl flex flex-col items-center justify-center gap-0.5"
+            style={{
+              background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.18), rgba(15, 23, 42, 0.8))',
+              border: '1.5px solid rgba(52, 211, 153, 0.35)',
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.1)',
+            }}
+            title="ללא משקעים חזויים (מזג אוויר יבש לחלוטין)"
+          >
+            <div className="flex items-center gap-1">
+              <span className="text-[10px] filter drop-shadow-[0_0_3px_#34d399]">☀️</span>
+              <span className="text-xs font-bold font-mono text-emerald-200 tracking-tight">יבש</span>
+            </div>
+            <span className="text-[9px] font-mono text-slate-300 tracking-tight">
+              0 מ"מ גשם
             </span>
           </div>
-          <span className="text-[9px] font-mono font-bold text-amber-300 tracking-tight">
-            צפי {forecast.precipitationSum ?? 0} מ"מ
-          </span>
-        </div>
+        ) : (
+          <div
+            className="px-1.5 py-1 rounded-xl flex flex-col items-center justify-center gap-0.5"
+            style={{
+              background: forecast.precipitationType === 'snow'
+                ? 'linear-gradient(135deg, rgba(168, 85, 247, 0.25), rgba(15, 23, 42, 0.8))'
+                : 'linear-gradient(135deg, rgba(6, 182, 212, 0.25), rgba(15, 23, 42, 0.8))',
+              border: forecast.precipitationType === 'snow'
+                ? '1.5px solid rgba(192, 132, 252, 0.45)'
+                : '1.5px solid rgba(34, 211, 238, 0.45)',
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.1)',
+            }}
+            title={`סיכוי: ${forecast.precipitationProbability}% | צפי כמות משקעים: ${forecast.precipitationSum ?? 0} מ"מ`}
+          >
+            <div className="flex items-center gap-1">
+              <span className="text-[10px] filter drop-shadow-[0_0_3px_#38bdf8]">
+                {forecast.precipitationType === 'snow' ? '❄️' : '🌧️'}
+              </span>
+              <span className="text-xs font-bold font-mono text-sky-200 tracking-tight">
+                {forecast.precipitationProbability}%
+              </span>
+            </div>
+            <span className="text-[9px] font-mono font-bold text-amber-300 tracking-tight">
+              צפי {forecast.precipitationSum ?? 0} מ"מ
+            </span>
+          </div>
+        )}
 
         {/* 3. Barometric Pressure (Compass-like Barometer Gauge + Country Unit) */}
         {(() => {
@@ -402,41 +443,81 @@ export const WeatherCardDay: React.FC<WeatherCardDayProps> = ({
       </div>
 
       {/* ========================================================= */}
-      {/* 5. FIFTH ROW: Surf Conditions Capsule (Wave + תנאי גלישה + Surfer) */}
+      {/* 5. FIFTH ROW: Coastal Surf Conditions OR Inland Terrestrial Climate & UV Index */}
       {/* ========================================================= */}
-      <div
-        className="relative z-10 w-full px-3 py-1.5 rounded-xl flex items-center justify-between"
-        style={{
-          background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.75), rgba(15, 23, 42, 0.85))',
-          border: '1.5px solid rgba(255, 255, 255, 0.16)',
-          boxShadow: '0 4px 16px rgba(0, 0, 0, 0.35), inset 0 1px 1px rgba(255, 255, 255, 0.15)',
-        }}
-      >
-        {/* Left: 3D Ocean Wave Swirl Icon */}
-        <div className="text-base filter drop-shadow-[0_0_6px_rgba(56,189,248,0.8)] animate-pulse">
-          🌊
-        </div>
-
-        {/* Center: "תנאי גלישה" text + Optional height - Smaller font */}
-        <div className="text-center">
-          <div
-            className="text-xs sm:text-sm font-bold text-white tracking-wide"
-            style={{ textShadow: '0 1px 3px rgba(0,0,0,0.8)' }}
-          >
-            {forecast.isCoastal ? 'תנאי גלישה' : 'מזג אוויר יבשתי'}
+      {forecast.isCoastal && forecast.waveHeight > 0 ? (
+        <div
+          className="relative z-10 w-full px-3 py-1.5 rounded-xl flex items-center justify-between"
+          style={{
+            background: 'linear-gradient(135deg, rgba(14, 165, 233, 0.22), rgba(15, 23, 42, 0.85))',
+            border: '1.5px solid rgba(56, 189, 248, 0.4)',
+            boxShadow: '0 4px 16px rgba(0, 0, 0, 0.35), inset 0 1px 1px rgba(255, 255, 255, 0.15)',
+          }}
+          title={`מצב הים: ${forecast.surfCondition || 'תנאי גלישה'} · גובה גלים: ${forecast.waveHeight} מטר`}
+        >
+          {/* Left: 3D Ocean Wave Swirl Icon */}
+          <div className="text-base filter drop-shadow-[0_0_6px_rgba(56,189,248,0.8)] animate-pulse">
+            🌊
           </div>
-          {forecast.isCoastal && forecast.waveHeight > 0 && (
-            <div className="text-[9px] font-mono text-cyan-300">
-              גובה גלים: {forecast.waveHeight} מטר
-            </div>
-          )}
-        </div>
 
-        {/* Right: Surfer on Wave Icon */}
-        <div className="text-base filter drop-shadow-[0_0_6px_rgba(245,158,11,0.7)]">
-          🏄
+          {/* Center: Coastal Surf Conditions & Wave Height */}
+          <div className="text-center">
+            <div
+              className="text-xs sm:text-sm font-bold text-cyan-200 tracking-wide"
+              style={{ textShadow: '0 1px 3px rgba(0,0,0,0.8)' }}
+            >
+              {forecast.surfCondition || 'תנאי גלישה וים'}
+            </div>
+            <div className="text-[10px] font-mono text-cyan-300 font-semibold flex items-center justify-center gap-1">
+              <span>גובה גלים:</span>
+              <span className="text-amber-300 font-bold">{forecast.waveHeight} מטר</span>
+            </div>
+          </div>
+
+          {/* Right: Surfer on Wave Icon */}
+          <div className="text-base filter drop-shadow-[0_0_6px_rgba(245,158,11,0.7)]">
+            🏄
+          </div>
         </div>
-      </div>
+      ) : (
+        <div
+          className="relative z-10 w-full px-3 py-1.5 rounded-xl flex items-center justify-between"
+          style={{
+            background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.75), rgba(15, 23, 42, 0.85))',
+            border: '1.5px solid rgba(251, 191, 36, 0.28)',
+            boxShadow: '0 4px 16px rgba(0, 0, 0, 0.35), inset 0 1px 1px rgba(255, 255, 255, 0.1)',
+          }}
+          title={`אקלים יבשתי ללא חוף ים · קרינת UV: ${forecast.uvIndex ?? 5} · עומס חום: ${forecast.heatStress || 'ללא עומס חום'}`}
+        >
+          {/* Left: Terrestrial Sun / UV Icon */}
+          <div className="text-base filter drop-shadow-[0_0_6px_rgba(251,191,36,0.8)]">
+            ☀️
+          </div>
+
+          {/* Center: Inland Terrestrial Climate & UV Index */}
+          <div className="text-center">
+            <div
+              className="text-xs sm:text-sm font-bold text-amber-200 tracking-wide flex items-center justify-center gap-1.5"
+              style={{ textShadow: '0 1px 3px rgba(0,0,0,0.8)' }}
+            >
+              <span>אקלים יבשתי</span>
+              <span className="text-slate-500">•</span>
+              <span className="text-slate-200 text-[11px] font-mono">
+                קרינת UV: {forecast.uvIndex !== undefined ? forecast.uvIndex : 5.2}
+              </span>
+            </div>
+            <div className="text-[10px] font-mono text-slate-300 flex items-center justify-center gap-1">
+              <span>עומס חום:</span>
+              <span className="text-amber-300 font-semibold">{forecast.heatStress || 'ללא עומס חום'}</span>
+            </div>
+          </div>
+
+          {/* Right: Mountain / Terrestrial Icon */}
+          <div className="text-base filter drop-shadow-[0_0_6px_rgba(148,163,184,0.6)]">
+            🏔️
+          </div>
+        </div>
+      )}
     </div>
   );
 };
